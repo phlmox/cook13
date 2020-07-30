@@ -1,0 +1,117 @@
+#!/usr/bin/python3
+import sys,getopt
+from termcolor import colored
+import re,base64
+import urllib.parse
+
+banner = """
+
+             .---------------------------.
+            /_   _   _         __  __   /|
+           // \ / \ / \ |_/ | |_  (_   / |
+          / \_  \_/ \_/ | \ | |__ ,_/ /  |
+         :.__________________________/   /
+         |  .--. .--.   .--.   .--.  |  /
+         | (    )    ) (    ) (    ) | /
+         |  '--' '--'   '--'   '--'  |/
+         '---------------------------'    """
+
+print(colored(banner,"red"))
+print("\tWHO WANTS SOME COOKIE?",colored("\tdeveloper: phlm0x","blue"),"\n\n",72*"-")
+
+def usage():
+	print(colored("--[ COOK13 ]--","red"))
+	print(colored("\t--> -h: Help","yellow"))
+	print(colored("\t--> -c <cookie> : Cookie text","yellow"))
+	print(colored("\t--> -o,--output: Write decoded data to file","yellow"))
+	sys.exit(0)
+
+if not len(sys.argv[1:]):
+	usage()
+
+output = False
+raw = ""
+opts,args = getopt.getopt(sys.argv[1:],"hc:o",["output"])
+
+for o,a in opts:
+	if o in ("-h"):
+		usage()
+	if o in ("-c"):
+		raw = a
+	if o in ("-o","--output"):
+		output = True
+
+if not len(raw):
+	usage()
+
+raw = raw.split(";")
+cookies = {}
+defined = {"PHPSESSID":"PHP","__cfduid":"Cloudflare","ga":"Google",
+"_ga":"Google","__gads":"Google","_gid":"Google","__utma":"Google",
+"__utmz":"Google","_gat":"Google","_fbp":"Facebook","__auc":"Alexa Analytics",
+"JSESSIONID":"JavaServer","laravel_session":"Laravel","_scid":"Snapchat","_gcl_au":"Google"}
+sess_keywords = ["user","username","session","password","pass","passwd"]
+
+for r in raw:
+	buf = ""
+	for t in range(len(r)):
+		if r[t] == "=" and (r[t-1].isalnum() and r[t+1].isalnum()) or r[t+1] == "{":
+			cookies[buf.replace(" ","")] = urllib.parse.unquote(r[t+1:])
+			break
+		buf+=r[t]
+
+for c in cookies:
+	print(colored("* {}".format(c),"green"))
+	#main
+	printv = cookies[c]
+	if len(printv)>=80:
+		printv = printv[:80]+"..."
+	print(colored("\t-> VALUE: '{}', LENGTH: {}".format(printv,str(len(cookies[c]))),"yellow"))
+	#type
+	if cookies[c].lower() in ("true","false"):
+		print(colored("\t-> TYPE: BOOLEAN (true,false)","yellow"))
+	elif cookies[c].isnumeric():
+		print(colored("\t-> TYPE: INTEGER","yellow"))
+	else:
+		print(colored("\t-> TYPE: STRING","yellow"))
+	#defined
+	if c in defined:
+		print(colored("\t-> SERVICE: {}".format(defined[c]),"yellow"))
+	#base64
+	try:
+		b64data = base64.b64decode(cookies[c].encode()).decode()
+		print(colored("\t-> [*] BASE64 DATA","blue"))
+		if output:
+			out_file = open(c,"w")
+			out_file.write(b64data)
+			out_file.close()
+	except:
+		pass
+	#jwt
+	if cookies[c].count(".") == 2:
+		try:
+			jwt = cookies[c].split(".")
+			jwtbuf = ""
+			jwtdata = ""
+			jwtdata += base64.b64decode(jwt[0].encode()).decode()
+			jwtbuf = jwt[1]
+			while len(jwtbuf)%4!=0:
+				jwtbuf+="="
+			jwtdata+="\n"+base64.b64decode(jwtbuf.encode()).decode()
+			if output:
+				out_file = open(c,"w")
+				out_file.write(jwtdata)
+				out_file.close()
+			print(colored("\t-> [*] JSON WEB TOKEN","blue"))
+		except:
+			pass
+	#md5,sha1
+	if len(re.findall("^[a-f0-9]{32}$",cookies[c])):
+		print(colored("\t-> [*] POSSIBLE 'MD5' DATA","blue"))
+	if len(re.findall("^[a-f0-9]{40}$",cookies[c])):
+		print(colored("\t-> [*] POSSIBLE 'SHA1' DATA","blue"))
+	#session objects
+	for s_word in sess_keywords:
+		if s_word in c:
+			print(colored("\t-> [*] POSSIBLE SESSION CONTROL COOKIE","blue"))
+			break
