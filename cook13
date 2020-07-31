@@ -17,7 +17,7 @@ banner = """
          '---------------------------'    """
 
 print(colored(banner,"red"))
-print("\tWHO WANTS SOME COOKIE?",colored("\tdeveloper: phlm0x","blue"),"\n\n",72*"-")
+print("\tWHO WANTS SOME COOKIE?",colored("\tdeveloper: phlm0x, version: 1.1","blue"),"\n\n",72*"-")
 
 def usage():
 	print(colored("--[ COOK13 ]--","red"))
@@ -49,8 +49,10 @@ cookies = {}
 defined = {"PHPSESSID":"PHP","__cfduid":"Cloudflare","ga":"Google",
 "_ga":"Google","__gads":"Google","_gid":"Google","__utma":"Google",
 "__utmz":"Google","_gat":"Google","_fbp":"Facebook","__auc":"Alexa Analytics",
-"JSESSIONID":"JavaServer","laravel_session":"Laravel","_scid":"Snapchat","_gcl_au":"Google"}
-sess_keywords = ["user","username","session","password","pass","passwd"]
+"JSESSIONID":"JavaServer","laravel_session":"Laravel","_scid":"Snapchat","_gcl_au":"Google",
+"__utmc":"Google","__utmv":"Google"}
+
+sess_keywords = ["user","username","session","password","pass","passwd","token"]
 
 for r in raw:
 	buf = ""
@@ -61,7 +63,7 @@ for r in raw:
 		buf+=r[t]
 
 for c in cookies:
-	print(colored("* {}".format(c),"green"))
+	print(colored("* {}~:".format(c),"green"))
 	#main
 	printv = cookies[c]
 	if len(printv)>=80:
@@ -81,8 +83,10 @@ for c in cookies:
 	try:
 		b64data = base64.b64decode(cookies[c].encode()).decode()
 		print(colored("\t-> [*] BASE64 DATA","blue"))
+		if len(re.findall("http[s]?:\\/\\/(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+",b64data)):
+			print(colored("\t-> [*] BASE64 ENCODED URL FOUND '{}'! POSSIBLE SSRF,XSS".format(b64data),"blue"))
 		if output:
-			out_file = open(c,"w")
+			out_file = open("COOKIE_"+c,"w")
 			out_file.write(b64data)
 			out_file.close()
 	except:
@@ -99,12 +103,15 @@ for c in cookies:
 				jwtbuf+="="
 			jwtdata+="\n"+base64.b64decode(jwtbuf.encode()).decode()
 			if output:
-				out_file = open(c,"w")
+				out_file = open("COOKIE_"+c,"w")
 				out_file.write(jwtdata)
 				out_file.close()
 			print(colored("\t-> [*] JSON WEB TOKEN","blue"))
 		except:
 			pass
+	#url
+	if len(re.findall("http[s]?:\\/\\/(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+",cookies[c])):
+		print(colored("\t-> [*] URL FOUND! POSSIBLE SSRF,XSS","blue"))
 	#md5,sha1
 	if len(re.findall("^[a-f0-9]{32}$",cookies[c])):
 		print(colored("\t-> [*] POSSIBLE 'MD5' DATA","blue"))
