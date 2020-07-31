@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 import sys,getopt
 from termcolor import colored
-import re,base64
+import re,base64,json
 import urllib.parse
 
 banner = """
@@ -17,7 +17,7 @@ banner = """
          '---------------------------'    """
 
 print(colored(banner,"red"))
-print("\tWHO WANTS SOME COOKIE?",colored("\tdeveloper: phlm0x, version: 1.1","blue"),"\n\n",72*"-")
+print("\tWHO WANTS SOME COOKIE?",colored("\tdeveloper: phlm0x, version: 1.2","blue"),"\n\n",72*"-")
 
 def usage():
 	print(colored("--[ COOK13 ]--","red"))
@@ -46,18 +46,19 @@ if not len(raw):
 
 raw = raw.split(";")
 cookies = {}
-defined = {"PHPSESSID":"PHP","__cfduid":"Cloudflare","ga":"Google",
+defined = {"PHPSESSID":"PHP","__cfduid":"Cloudflare","__cfruid":"Cloudflare","ga":"Google",
 "_ga":"Google","__gads":"Google","_gid":"Google","__utma":"Google",
 "__utmz":"Google","_gat":"Google","_fbp":"Facebook","__auc":"Alexa Analytics",
 "JSESSIONID":"JavaServer","laravel_session":"Laravel","_scid":"Snapchat","_gcl_au":"Google",
-"__utmc":"Google","__utmv":"Google"}
+"__utmc":"Google","__utmv":"Google","_gcl_aw":"Google"}
+defined_prefix = {"_gac_UA-":"Google"}
 
 sess_keywords = ["user","username","session","password","pass","passwd","token"]
 
 for r in raw:
 	buf = ""
 	for t in range(len(r)):
-		if r[t] == "=" and (r[t-1].isalnum() and r[t+1].isalnum()) or r[t+1] == "{":
+		if r[t] == "=" and (r[t-1].isalnum() and r[t+1].isalnum()) or r[t+1] in ("{","%","\""):
 			cookies[buf.replace(" ","")] = urllib.parse.unquote(r[t+1:])
 			break
 		buf+=r[t]
@@ -79,6 +80,9 @@ for c in cookies:
 	#defined
 	if c in defined:
 		print(colored("\t-> SERVICE: {}".format(defined[c]),"yellow"))
+	for pr in defined_prefix:
+		if pr in c:
+			print(colored("\t-> SERVICE: {}".format(defined_prefix[pr]),"yellow"))
 	#base64
 	try:
 		b64data = base64.b64decode(cookies[c].encode()).decode()
@@ -107,6 +111,17 @@ for c in cookies:
 				out_file.write(jwtdata)
 				out_file.close()
 			print(colored("\t-> [*] JSON WEB TOKEN","blue"))
+		except:
+			pass
+	#json
+	if cookies[c][0] == "{" and cookies[c][-1] == "}":
+		try:
+			jsondata = json.loads(cookies[c])
+			print(colored("\t-> [*] JSON DATA","blue"))
+			if output:
+				out_file = open("COOKIE_"+c,"w")
+				out_file.write(cookies[c])
+				out_file.close()
 		except:
 			pass
 	#url
