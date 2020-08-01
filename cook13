@@ -17,7 +17,7 @@ banner = """
          '---------------------------'    """
 
 print(colored(banner,"red"))
-print("\tWHO WANTS SOME COOKIE?",colored("\tdeveloper: phlm0x, version: 1.2","blue"),"\n\n",72*"-")
+print("\tWHO WANTS SOME COOKIE?",colored("\tdeveloper: phlm0x, version: 1.3","blue"),"\n\n",72*"-")
 
 def usage():
 	print(colored("--[ COOK13 ]--","red"))
@@ -54,19 +54,23 @@ defined = {"PHPSESSID":"PHP","__cfduid":"Cloudflare","__cfruid":"Cloudflare","ga
 "_ga":"Google","__gads":"Google","_gid":"Google","__utma":"Google",
 "__utmz":"Google","_gat":"Google","_fbp":"Facebook","__auc":"Alexa Analytics",
 "JSESSIONID":"JavaServer","laravel_session":"Laravel","_scid":"Snapchat",
-"__utmc":"Google","__utmv":"Google"}
-defined_prefix = {"_gac_UA-":"Google","_gat_gtag_":"Google","_gcl_":"Google"}
+"__utmc":"Google","__utmv":"Google","__asc":"Alexa Analytics"}
+defined_prefix = {"_gac_UA-":"Google","_gat_gtag_":"Google","_gcl_":"Google","_gat_":"Google","__hstc":"Hubspot"}
 
 sess_keywords = ["user","username","session","password","pass","passwd","token"]
 
 for r in raw:
 	buf = ""
 	for t in range(len(r)):
+		if r[t] == "=" and t+1>=len(r):
+			cookies[buf.replace(" ","")] = urllib.parse.unquote(r[t+1:])
+			break
 		if r[t] == "=" and (r[t-1].isalnum() and r[t+1].isalnum()) or r[t+1] in ("{","%","\""):
 			cookies[buf.replace(" ","")] = urllib.parse.unquote(r[t+1:])
 			break
 		buf+=r[t]
 
+_out=""
 for c in cookies:
 	print(colored("* {}~:".format(c),"green"))
 	#main
@@ -74,73 +78,79 @@ for c in cookies:
 	if len(printv)>=80:
 		printv = printv[:80]+"..."
 	print(colored("\t-> VALUE: '{}', LENGTH: {}".format(printv,str(len(cookies[c]))),"yellow"))
+	# IF NOT BLANK
+
 	#type
-	if cookies[c].lower() in ("true","false"):
-		print(colored("\t-> TYPE: BOOLEAN (true,false)","yellow"))
+	if not len(cookies[c]):
+		print(colored("\t-> TYPE:","yellow"),colored("BLANK","red"))
 	elif cookies[c].isnumeric():
-		print(colored("\t-> TYPE: INTEGER","yellow"))
+		print(colored("\t-> TYPE:","yellow"),colored("INTEGER","red"))
+	elif cookies[c].lower() in ("true","false"):
+		print(colored("\t-> TYPE:","yellow"),colored("BOOLEAN (true,false)","red"))
 	else:
-		print(colored("\t-> TYPE: STRING","yellow"))
-	#defined
-	if c in defined:
-		print(colored("\t-> SERVICE:","yellow"),colored(defined[c],"cyan"))
-	for pr in defined_prefix:
-		if pr in c:
-			print(colored("\t-> SERVICE:","yellow"),colored(defined_prefix[pr],"cyan"))
-	#base64
-	try:
-		b64data = base64.b64decode(cookies[c].encode()).decode()
-		print(colored("\t-> [*] BASE64 DATA","blue"))
-		if len(re.findall("http[s]?:\\/\\/(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+",b64data)):
-			print(colored("\t-> [*] BASE64 ENCODED URL FOUND '{}'! POSSIBLE SSRF,XSS".format(b64data),"blue"))
-		if output:
-			out_file = open("cook13-output/BASE64_"+c,"w")
-			out_file.write(b64data)
-			out_file.close()
-	except:
-		pass
-	#jwt
-	if cookies[c].count(".") == 2:
+		print(colored("\t-> TYPE:","yellow"),colored("STRING","red"))
+	if len(cookies[c])>0:
+		#defined
+		if c in defined:
+			print(colored("\t-> SERVICE:","yellow"),colored(defined[c],"cyan"))
+		for pr in defined_prefix:
+			if pr in c:
+				print(colored("\t-> SERVICE:","yellow"),colored(defined_prefix[pr],"cyan"))
+		#base64
 		try:
-			jwt = cookies[c].split(".")
-			jwtbuf = ""
-			jwtdata = ""
-			jwtdata += base64.b64decode(jwt[0].encode()).decode()
-			jwtbuf = jwt[1]
-			while len(jwtbuf)%4!=0:
-				jwtbuf+="="
-			jwtdata+="\n"+base64.b64decode(jwtbuf.encode()).decode()
+			b64data = base64.b64decode(cookies[c].encode()).decode()
+			print(colored("\t-> [*] BASE64 DATA","blue"))
+			if len(re.findall("http[s]?:\\/\\/(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+",b64data)):
+				print(colored("\t-> [*] BASE64 ENCODED URL FOUND '{}'! POSSIBLE SSRF,XSS".format(b64data),"blue"))
 			if output:
-				out_file = open("cook13-output/JWT_"+c,"w")
-				out_file.write(jwtdata)
-				out_file.close()
-				org_file = open("JWT_ORIGINAL_"+c,"w")
-				org_file.write(cookies[c])
-				org_file.close()
-			print(colored("\t-> [*] JSON WEB TOKEN","blue"))
-		except:
-			pass
-	#json
-	if cookies[c][0] == "{" and cookies[c][-1] == "}":
-		try:
-			jsondata = json.loads(cookies[c])
-			print(colored("\t-> [*] JSON DATA","blue"))
-			if output:
-				out_file = open("cook13-output/JSON_"+c,"w")
-				out_file.write(cookies[c])
+				out_file = open("cook13-output/BASE64_"+c,"w")
+				out_file.write(b64data)
 				out_file.close()
 		except:
 			pass
-	#url
-	if len(re.findall("http[s]?:\\/\\/(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+",cookies[c])):
-		print(colored("\t-> [*] URL FOUND! POSSIBLE SSRF,XSS","blue"))
-	#md5,sha1
-	if len(re.findall("^[a-f0-9]{32}$",cookies[c])):
-		print(colored("\t-> [*] POSSIBLE 'MD5' DATA","blue"))
-	if len(re.findall("^[a-f0-9]{40}$",cookies[c])):
-		print(colored("\t-> [*] POSSIBLE 'SHA1' DATA","blue"))
-	#session objects
-	for s_word in sess_keywords:
-		if s_word in c:
-			print(colored("\t-> [*] POSSIBLE SESSION CONTROL COOKIE","blue"))
-			break
+		#jwt
+		if cookies[c].count(".") == 2:
+			try:
+				jwt = cookies[c].split(".")
+				jwtbuf = ""
+				jwtdata = ""
+				jwtdata += base64.b64decode(jwt[0].encode()).decode()
+				jwtbuf = jwt[1]
+				while len(jwtbuf)%4!=0:
+					jwtbuf+="="
+				jwtdata+="\n"+base64.b64decode(jwtbuf.encode()).decode()
+				if output:
+					out_file = open("cook13-output/JWT_"+c,"w")
+					out_file.write(jwtdata)
+					out_file.close()
+					org_file = open("JWT_ORIGINAL_"+c,"w")
+					org_file.write(cookies[c])
+					org_file.close()
+				print(colored("\t-> [*] JSON WEB TOKEN","blue"))
+			except:
+				pass
+		#json
+
+		if cookies[c][0] == "{" and cookies[c][-1] == "}":
+			try:
+				jsondata = json.loads(cookies[c])
+				print(colored("\t-> [*] JSON DATA","blue"))
+				if output:
+					out_file = open("cook13-output/JSON_"+c,"w")
+					out_file.write(cookies[c])
+					out_file.close()
+			except:
+				pass
+		#url
+		if len(re.findall("http[s]?:\\/\\/(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+",cookies[c])):
+			print(colored("\t-> [*] URL FOUND! POSSIBLE SSRF,XSS","blue"))
+		#md5,sha1
+		if len(re.findall("^[a-f0-9]{32}$",cookies[c])):
+			print(colored("\t-> [*] POSSIBLE 'MD5' DATA","blue"))
+		if len(re.findall("^[a-f0-9]{40}$",cookies[c])):
+			print(colored("\t-> [*] POSSIBLE 'SHA1' DATA","blue"))
+		#session objects
+		for s_word in sess_keywords:
+			if s_word in c:
+				print(colored("\t-> [*] POSSIBLE SESSION CONTROL COOKIE","blue"))
+				break
