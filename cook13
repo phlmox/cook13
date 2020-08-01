@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-import sys,getopt
+import os,sys,getopt
 from termcolor import colored
 import re,base64,json
 import urllib.parse
@@ -22,7 +22,7 @@ print("\tWHO WANTS SOME COOKIE?",colored("\tdeveloper: phlm0x, version: 1.2","bl
 def usage():
 	print(colored("--[ COOK13 ]--","red"))
 	print(colored("\t--> -h: Help","yellow"))
-	print(colored("\t--> -c <cookie> : Cookie text","yellow"))
+	print(colored("\t--> -c <cookie>: Cookie text","yellow"))
 	print(colored("\t--> -o,--output: Write decoded data to file","yellow"))
 	sys.exit(0)
 
@@ -44,14 +44,18 @@ for o,a in opts:
 if not len(raw):
 	usage()
 
+if output:
+	if not os.path.exists("cook13-output/"):
+		os.mkdir("cook13-output")
+
 raw = raw.split(";")
 cookies = {}
 defined = {"PHPSESSID":"PHP","__cfduid":"Cloudflare","__cfruid":"Cloudflare","ga":"Google",
 "_ga":"Google","__gads":"Google","_gid":"Google","__utma":"Google",
 "__utmz":"Google","_gat":"Google","_fbp":"Facebook","__auc":"Alexa Analytics",
-"JSESSIONID":"JavaServer","laravel_session":"Laravel","_scid":"Snapchat","_gcl_au":"Google",
-"__utmc":"Google","__utmv":"Google","_gcl_aw":"Google"}
-defined_prefix = {"_gac_UA-":"Google"}
+"JSESSIONID":"JavaServer","laravel_session":"Laravel","_scid":"Snapchat",
+"__utmc":"Google","__utmv":"Google"}
+defined_prefix = {"_gac_UA-":"Google","_gat_gtag_":"Google","_gcl_":"Google"}
 
 sess_keywords = ["user","username","session","password","pass","passwd","token"]
 
@@ -79,10 +83,10 @@ for c in cookies:
 		print(colored("\t-> TYPE: STRING","yellow"))
 	#defined
 	if c in defined:
-		print(colored("\t-> SERVICE: {}".format(defined[c]),"yellow"))
+		print(colored("\t-> SERVICE:","yellow"),colored(defined[c],"cyan"))
 	for pr in defined_prefix:
 		if pr in c:
-			print(colored("\t-> SERVICE: {}".format(defined_prefix[pr]),"yellow"))
+			print(colored("\t-> SERVICE:","yellow"),colored(defined_prefix[pr],"cyan"))
 	#base64
 	try:
 		b64data = base64.b64decode(cookies[c].encode()).decode()
@@ -90,7 +94,7 @@ for c in cookies:
 		if len(re.findall("http[s]?:\\/\\/(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+",b64data)):
 			print(colored("\t-> [*] BASE64 ENCODED URL FOUND '{}'! POSSIBLE SSRF,XSS".format(b64data),"blue"))
 		if output:
-			out_file = open("COOKIE_"+c,"w")
+			out_file = open("cook13-output/BASE64_"+c,"w")
 			out_file.write(b64data)
 			out_file.close()
 	except:
@@ -107,9 +111,12 @@ for c in cookies:
 				jwtbuf+="="
 			jwtdata+="\n"+base64.b64decode(jwtbuf.encode()).decode()
 			if output:
-				out_file = open("COOKIE_"+c,"w")
+				out_file = open("cook13-output/JWT_"+c,"w")
 				out_file.write(jwtdata)
 				out_file.close()
+				org_file = open("JWT_ORIGINAL_"+c,"w")
+				org_file.write(cookies[c])
+				org_file.close()
 			print(colored("\t-> [*] JSON WEB TOKEN","blue"))
 		except:
 			pass
@@ -119,7 +126,7 @@ for c in cookies:
 			jsondata = json.loads(cookies[c])
 			print(colored("\t-> [*] JSON DATA","blue"))
 			if output:
-				out_file = open("COOKIE_"+c,"w")
+				out_file = open("cook13-output/JSON_"+c,"w")
 				out_file.write(cookies[c])
 				out_file.close()
 		except:
