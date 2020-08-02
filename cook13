@@ -65,7 +65,7 @@ for r in raw:
 		if r[t] == "=" and t+1>=len(r):
 			cookies[buf.replace(" ","")] = urllib.parse.unquote(r[t+1:])
 			break
-		if r[t] == "=" and (r[t-1].isalnum() and r[t+1].isalnum()) or r[t+1] in ("{","%","\""):
+		if r[t] == "=" and (r[t-1].isalnum() and r[t+1].isalnum()) or r[t+1] in ("{","%","\"","|"):
 			cookies[buf.replace(" ","")] = urllib.parse.unquote(r[t+1:])
 			break
 		buf+=r[t]
@@ -123,7 +123,7 @@ for c in cookies:
 					out_file = open("cook13-output/JWT_"+c,"w")
 					out_file.write(jwtdata)
 					out_file.close()
-					org_file = open("JWT_ORIGINAL_"+c,"w")
+					org_file = open("cook13-output/JWT_ORIGINAL_"+c,"w")
 					org_file.write(cookies[c])
 					org_file.close()
 				print(colored("\t-> [*] JSON WEB TOKEN","blue"))
@@ -151,6 +151,6 @@ for c in cookies:
 			print(colored("\t-> [*] POSSIBLE 'SHA1' DATA","blue"))
 		#session objects
 		for s_word in sess_keywords:
-			if s_word in c:
+			if s_word in c.lower():
 				print(colored("\t-> [*] POSSIBLE SESSION CONTROL COOKIE","blue"))
 				break
