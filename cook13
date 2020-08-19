@@ -18,13 +18,14 @@ banner = """
          '---------------------------'    """
 
 print(colored(banner,"red"))
-print("\tWHO WANTS SOME COOKIE?",colored("\tdeveloper: phlm0x, version: 1.4","blue"),"\n\n",72*"-")
+print("\tWHO WANTS SOME COOKIE?",colored("\tdeveloper: phlm0x, version: 1.5","blue"),"\n\n",72*"-")
 
 def usage():
 	print(colored("--[ COOK13 ]--","red"))
 	print(colored("\t--> -h: Help","yellow"))
-	print(colored("\t--> -c <cookie>: Cookie text","yellow"))
+	print(colored("\t--> -c <cookie>: Cookie","yellow"))
 	print(colored("\t--> -o,--output: Write decoded data to file","yellow"))
+	print(colored("\t--> -s <query>,--search: Search in cookies","yellow"))
 	sys.exit(0)
 
 if not len(sys.argv[1:]):
@@ -32,7 +33,8 @@ if not len(sys.argv[1:]):
 
 output = False
 raw = ""
-opts,args = getopt.getopt(sys.argv[1:],"hc:o",["output"])
+searchQuery = ""
+opts,args = getopt.getopt(sys.argv[1:],"hc:s:o",["output","search"])
 
 for o,a in opts:
 	if o in ("-h"):
@@ -41,6 +43,8 @@ for o,a in opts:
 		raw = a
 	if o in ("-o","--output"):
 		output = True
+	if o in ("-s","--search"):
+		searchQuery = a
 
 if not len(raw):
 	usage()
@@ -65,7 +69,7 @@ defined = {"PHPSESSID":"PHP","ASP.NET_SessionId":"ASP","__cfduid":"Cloudflare","
 defined_prefix = {"_gac":"Google","_gat_gtag_":"Google","_gcl_":"Google","_gat_":"Google","__hstc":"Hubspot"}
 
 sess_keywords = ["user","username","session","password","pass","passwd"]
-csrf_keywords = ["xsrf-token","xsrf_token","csrf-token","csrf_token"]
+csrf_keywords = ["xsrf-token","xsrf_token","csrf-token","csrf_token","csrftoken","xsrftoken"]
 
 for r in raw:
 	buf = ""
@@ -77,6 +81,11 @@ for r in raw:
 			cookies[buf.replace(" ","")] = urllib.parse.unquote(r[t+1:])
 			break
 		buf+=r[t]
+
+for c in cookies:
+	if len(searchQuery):
+		if searchQuery in cookies[c]:
+			print(colored(72*"*","red")+"\n"+colored("Query found on cookie '{}': ".format(c),"yellow")+cookies[c]+"\n"+colored(72*"*","red")+"\n")
 
 _out=""
 for c in cookies:
@@ -109,18 +118,19 @@ for c in cookies:
 			if pr in c:
 				print(colored("\t-> SERVICE:","yellow"),colored(defined_prefix[pr],"cyan"))
 		#base64
-		try:
-			b64data = base64.b64decode(cookies[c].encode()).decode()
-			if cookies[c] not in ("[]","*"):
-				print(colored("\t-> [*] BASE64 DATA","blue"))
-				if len(re.findall("http[s]?:\\/\\/(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+",b64data)):
-					print(colored("\t-> [*] BASE64 ENCODED URL FOUND '{}'! POSSIBLE SSRF,XSS".format(b64data),"blue"))
-				if output:
-					out_file = open("cook13-output/BASE64_"+c,"w")
-					out_file.write(b64data)
-					out_file.close()
-		except:
-			pass
+		if cookies[c]!="{}":
+			try:
+				b64data = base64.b64decode(cookies[c].encode()).decode()
+				if cookies[c] not in ("[]","*"):
+					print(colored("\t-> [*] BASE64 DATA","blue"))
+					if len(re.findall("http[s]?:\\/\\/(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+",b64data)):
+						print(colored("\t-> [*] BASE64 ENCODED URL FOUND '{}'! POSSIBLE SSRF,XSS".format(b64data),"blue"))
+					if output:
+						out_file = open("cook13-output/BASE64_"+c,"w")
+						out_file.write(b64data)
+						out_file.close()
+			except:
+				pass
 		#jwt
 		jwtWork = cookies[c].replace("\"","")
 		if jwtWork.count(".") == 2:
@@ -145,7 +155,7 @@ for c in cookies:
 				pass
 		#json
 
-		if cookies[c][0] == "{" and cookies[c][-1] == "}":
+		if (cookies[c][0] == "{" and cookies[c][-1] == "}") and len(cookies[c])>2:
 			try:
 				jsondata = json.loads(cookies[c])
 				print(colored("\t-> [*] JSON DATA","blue"))
